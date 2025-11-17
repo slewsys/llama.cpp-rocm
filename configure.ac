@@ -46,13 +46,16 @@ AC_PATH_PROG([ED_CMD],          [ed],                  [], [${LOCAL_PREFIX}${PAT
 AC_PATH_PROG([GIT_CMD],         [git],                 [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROGS([GREP_CMD],       [ggrep grep],          [], [${OPT_PREFIX}${PATH}])
+AC_PATH_PROGS([GZIP_CMD],       [ggzip gzip],          [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([HEAD_CMD],       [ghead head],          [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROGS([HTMLQ_CMD],      [htmlq],               [], [${ASDF_PREFIX}${PATH}])
 
 AC_PATH_PROGS([MAKE_CMD],       [gmake make],          [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([MKDIR_CMD],      [gmkdir mkdir],        [], [${OPT_PREFIX}${PATH}])
+AC_PATH_PROGS([INSTALL_CMD],    [ginstall install],    [], [${OPT_PREFIX}${PATH}])
 
+AC_PATH_PROG([JQ_CMD],          [jq],                  [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([PATCH_CMD],       [patch],               [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([PIP_CMD],         [pip],                 [], [${ASDF_PREFIX}${PATH}])
 
@@ -68,6 +71,7 @@ AC_PATH_PROG([SUDO_CMD],        [sudo],                [], [${OPT_PREFIX}${PATH}
 AC_PATH_PROGS([TAIL_CMD],       [gtail tail],          [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([TAR_CMD],        [gtar tar],            [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([TEE_CMD],        [gtee tee],            [], [${OPT_PREFIX}${PATH}])
+AC_PATH_PROGS([TOUCH_CMD],      [gtouch touch],        [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROG([UNAME_CMD],       [uname],               [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([UPDATE_ALTERNATIVES_CMD],
@@ -75,11 +79,12 @@ AC_PATH_PROG([UPDATE_ALTERNATIVES_CMD],
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([build-llama.cpp-rocm],               [chmod +x build-llama.cpp-rocm])
-AC_CONFIG_FILES([install-llama.cpp-rocm],             [chmod +x install-llama.cpp-rocm])
+AC_CONFIG_FILES([build-rocm],                         [chmod +x build-rocm])
 AC_CONFIG_FILES([install-asdf],                       [chmod +x install-asdf])
 AC_CONFIG_FILES([install-intel-oneapi-hpc],           [chmod +x install-intel-oneapi-hpc])
-AC_CONFIG_FILES([build-rocm],                         [chmod +x build-rocm])
-AC_CONFIG_FILES([install-ucx],                        [chmod +x install-ucx])
+AC_CONFIG_FILES([install-llama.cpp-rocm],             [chmod +x install-llama.cpp-rocm])
 AC_CONFIG_FILES([install-ompi],                       [chmod +x install-ompi])
+AC_CONFIG_FILES([install-rocm-binaries],              [chmod +x install-rocm-binaries])
+AC_CONFIG_FILES([install-ucx],                        [chmod +x install-ucx])
 
 AC_OUTPUT

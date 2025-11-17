@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# @(#) install-rocm-binaries
+#
+# This script fetches and installs the latest version ROCm nightly
+# builds.
+#
+: ${CURL_CMD:='@CURL_CMD@'}
+: ${ED_CMD:='@ED_CMD@'}
+: ${GZIP_CMD:='@GZIP_CMD@'}
+: ${INSTALL_CMD:='@INSTALL_CMD@'}
+: ${JQ_CMD:='@JQ_CMD@'}
+: ${RM_CMD:='@RM_CMD@'}
+: ${SUDO_CMD:='@SUDO_CMD@'}
+: ${TAR_CMD:='@TAR_CMD@'}
+: ${TOUCH_CMD:='@TOUCH_CMD@'}
+
+get-latest-build ()
+{
+    local target=linux-${1}
+    local index_url=${2}/index.html
+
+    $ED_CMD -e 'v/const files = /d' \
+            -e 's^^{ "files": ^' \
+            -e 's^];^] }^' \
+            -e "w !$JQ_CMD -r '[.files[] | select(.name | contains(\"'$target'\"))] | . | max_by(.mtime) | .name'" \
+            <($CURL_CMD -sSL --no-buffer "$index_url") 2>/dev/null
+}
+
+is-installed ()
+{
+    local rocmdir=$1
+    local name=$2
+
+    test -f "${rocmdir}/${name%.tar.gz}"
+}
+
+initialize-installdir ()
+{
+    local rocmdir=$1
+
+    $SUDO_CMD $RM_CMD -rf "$rocmdir"
+    $SUDO_CMD $INSTALL_CMD -d -m 0755 "$rocmdir"
+}
+
+fetch-compressed-archive ()
+{
+    local url=$1
+    local name=$2
+
+    echo "Fetching: ${url}/${name}" >&2
+
+    $CURL_CMD -sSL "${url}/${name}"
+}
+
+extract-archive-stream ()
+{
+    local rocmdir=$1
+
+    $GZIP_CMD -cd - |
+        $SUDO_CMD $TAR_CMD -C "$rocmdir" -xf -
+}
+
+record-archive-name ()
+{
+    local rocmdir=$1
+    local name=$2
+
+    $SUDO_CMD $TOUCH_CMD "${rocmdir}/${name%.tar.gz}"
+}
+
+if test ."$0" = ."${BASH_SOURCE[0]}"; then
+    set -o pipefail
+
+    declare script=''
+    declare script_name=''
+
+    script=$(readlink -e "$0")
+    script_name=${script##*/}
+
+    declare gfx_target=${1:-'gfx1151'}
+    declare rocm_rootdir=${2:-'/opt/rocm'}
+
+    declare rocm_nightly_url='https://therock-nightly-tarball.s3.amazonaws.com'
+
+
+    declare latest_build=''
+
+    if ! latest_build=$(get-latest-build "$gfx_target" "$rocm_nightly_url"); then
+        echo "${script_name}: ${gfx_target}: Not found" >&2
+        exit 1
+    elif is-installed "$rocm_rootdir" "$latest_build"; then
+        echo "${script_name}: ${latest_build}: Already installed" >&2
+        exit 0
+    fi
+
+    initialize-installdir "$rocm_rootdir" || exit $?
+    fetch-compressed-archive "$rocm_nightly_url" "$latest_build" |
+        extract-archive-stream "$rocm_rootdir" || exit $?
+    record-archive-name "$rocm_rootdir" "$latest_build"
+fi
