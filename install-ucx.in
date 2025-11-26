@@ -28,10 +28,10 @@ patch-repo ()
     local srcdir=$1
     local patch_file=$2
 
-    git -C "$srcdir" apply --index "$patch_file"
-
-    echo 'Git commit: Add golang path.'
-    git -C "$srcdir" commit -m 'Assign golang path.'
+    if git -C "$srcdir" apply --index "$patch_file"; then
+        echo 'Git commit: Add golang path.'
+        git -C "$srcdir" commit -m 'Assign golang path.'
+    fi
 }
 
 build-ucx ()
@@ -88,7 +88,7 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     declare ucx_root=${3:-'/usr/local'}
 
     declare ucx_repo_url='https://github.com/openucx/ucx.git'
-    declare ucx_srcdir=${PWD}/src/ucx
+    declare ucx_srcdir=${script_dir}/src/ucx
     declare top_srcdir=$(git rev-parse --show-toplevel)
 
     setup-rocm "$rocm_target" "$rocm_root" || exit $?
