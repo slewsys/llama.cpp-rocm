@@ -11,13 +11,15 @@
 : ${ED_CMD:='@ED_CMD@'}
 : ${GIT_CMD:='@GIT_CMD@'}
 : ${GREP_CMD:='@GREP_CMD@'}
+: ${INSTALL_CMD:='@INSTALL_CMD@'}
 : ${MAKE_CMD:='@MAKE_CMD@'}
 : ${PATCH_CMD:='@PATCH_CMD@'}
 : ${PIP_CMD:="${HOME}/.asdf/shims/pip"}
 : ${READLINK_CMD:='@READLINK_CMD@'}
 : ${RM_CMD:='@RM_CMD@'}
+: ${SORT_CMD:='@SORT_CMD@'}
 : ${SUDO_CMD:='@SUDO_CMD@'}
-: ${TAIL_CMD:='@TAIL_CMD@'}
+: ${TEE_CMD:='@TEE_CMD@'}
 : ${UPDATE_ALTERNATIVES_CMD:='@UPDATE_ALTERNATIVES_CMD@'}
 
 : ${INSTALL_PREFIX:='/usr/local'}
@@ -77,10 +79,10 @@ verify-python ()
         fi
 
         python_available=$(
-            $ED_CMD -s <($ASDF_CMD list) <<EOF | $TAIL_CMD -1
+            $ED_CMD -s <($ASDF_CMD list) <<EOF
 g/^python/1,.d
-g/^[a-z]/.,$d
-,!$GREP_CMD "$version"
+g/^[a-z]/.,\$d
+,! $GREP_CMD "$version" | $SORT_CMD -V
 p
 Q
 EOF
@@ -126,13 +128,15 @@ install-prerequisites ()
                 $SUDO_CMD $DNF_CMD install -y automake ccache cmake     \
                           doxygen git git-lfs libquadmath-devel libtool \
                           mesa-libEGL-devel ninja-build patchelf        \
-                          pkgconf-pkg-config python3-devel xxd
+                          pkgconf-pkg-config python3-devel xxd          \
+                    || return $?
             else
                 $SUDO_CMD $DNF_CMD install -y automake cmake ccache     \
                           doxygen gcc gfortran g++ git git-lfs libtool  \
                           libquadmath-devel mesa-libEGL-devel patchelf  \
                           ninja-build pkgconf-pkg-config python3-devel  \
-                          xxd
+                          xxd                                           \
+                    || return $?
             fi
             ;;
         debian|ubuntu)
@@ -142,60 +146,86 @@ install-prerequisites ()
                 $SUDO_CMD $APT_CMD install -y automake cmake ccache     \
                           doxygen git git-lfs libegl1-mesa-dev libtool  \
                           libquadmath0 libtool-bin ninja-build patchelf \
-                          pkgconf python3-dev xxd
+                          pkgconf python3-dev xxd                       \
+                    || return $?
             else
                 $SUDO_CMD $APT_CMD install -y automake cmake ccache     \
                           doxygen gcc gfortran g++ git git-lfs libtool  \
                           libquadmath0 libegl1-mesa-dev libtool-bin     \
-                          ninja-build patchelf pkgconf python3-dev      \
-                          xxd
+                          ninja-build patchelf pkgconf python3-dev xxd  \
+                    || return $?
+
             fi
             ;;
     esac
 }
 
-setup-rocm-environment ()
+clone-repo ()
 {
-    if test -d ./TheRock; then
-        $GIT_CMD -C ./TheRock pull --rebase || return $?
+    local repo_url=$1
+    local srcdir=$2
+
+    if test -d "${srcdir}/.git"; then
+        $GIT_CMD -C "$srcdir" pull --rebase || return $?
     else
         # $GIT_CMD clone --single-branch --filter=tree:0 https://github.com/ROCm/TheRock.git
-        $GIT_CMD clone https://github.com/ROCm/TheRock.git || return $?
+        $INSTALL_CMD -d -m 0755 "${srcdir%/*}" || return $?
+        $GIT_CMD -C "${srcdir%/*}" clone "$repo_url" "${srcdir##*/}"|| return $?
     fi
+}
 
-    pushd ./TheRock >/dev/null
+configure-env ()
+{
+    local srcdir=$1
+
+    pushd "$srcdir" >/dev/null
     # set-alternatives gcc /usr/bin/x86_64-linux-gnu-gcc-14 || return $?
     # set-alternatives g++ /usr/bin/x86_64-linux-gnu-g++-14 || return $?
     # set-alternatives gfortran /usr/bin/x86_64-linux-gnu-gfortran-14 || return $?
-    $PIP_CMD install -r requirements.txt
-    build_tools/fetch_sources.py
-    eval $(build_tools/setup_ccache.py)
+    $PIP_CMD install -r requirements.txt || return $?
+    build_tools/fetch_sources.py || return $?
+    eval $(build_tools/setup_ccache.py) || return $?
     export CCACHE_SLOPPINESS=include_file_ctime
     popd >/dev/null
 }
 
 build-rocm ()
 {
-    echo "*** CMake configuration of TheRock ***" >&2
+    local srcdir=$1
 
-    pushd ./TheRock >/dev/null
-    $CMAKE_CMD -B build \
-               -GNinja \
-               -DCMAKE_INSTALL_PREFIX=/usr/local \
-               -DTHEROCK_AMDGPU_TARGETS=gfx1151 \
-               -DTHEROCK_ENABLE_MPI=ON \
-               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-               .
+    echo "*** TheRock CMake configuration ***" >&2
 
-    echo "*** CMake build of TheRock ***" >&2
+    pushd "$srcdir" >/dev/null
+    CFLAGS=-I/usr/lib/gcc/x86_64-redhat-linux/15/include/               \
+    CXXFLAGS=-I/usr/lib/gcc/x86_64-redhat-linux/15/include/             \
+    $CMAKE_CMD -B build                                                 \
+               -GNinja                                                  \
+               -DCMAKE_INSTALL_PREFIX=/usr/local                        \
+               -DTHEROCK_AMDGPU_TARGETS=gfx1151                         \
+               -DTHEROCK_ENABLE_MPI=ON                                  \
+               -DCMAKE_C_COMPILER_LAUNCHER=ccache                       \
+               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache                     \
+               . |& $TEE_CMD "${srcdir}/build/conf.OUT"
 
-    $CMAKE_CMD --build build
+    echo "*** TheRock CMake build ***" >&2
+
+    $CMAKE_CMD --build build |& $TEE_CMD "${srcdir}/build/build.OUT"
     popd >/dev/null
 
     # set-alternatives gcc /usr/bin/x86_64-linux-gnu-gcc-14 || return $?
     # set-alternatives g++ /usr/bin/x86_64-linux-gnu-g++-14 || return $?
     # set-alternatives gfortran /usr/bin/x86_64-linux-gnu-gfortran-14 || return $?
+}
+
+rebuild-rocm ()
+{
+    local srcdir=$1
+
+    echo "*** TheRock CMake resume build ***" >&2
+
+    pushd "$srcdir" >/dev/null
+    $CMAKE_CMD --build build |& $TEE_CMD -a "${srcdir}/build/build.OUT"
+    popd >/dev/null
 }
 
 if test ."$0" = ."${BASH_SOURCE[0]}"; then
@@ -208,9 +238,17 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     script_dir=${script%/*}
 
     declare py_version='3\.12'
+    declare rocm_repo_url='https://github.com/ROCm/TheRock.git'
+    declare rocm_srcdir=${script_dir}/src/TheRock
+    declare top_srcdir=$(git rev-parse --show-toplevel)
 
     verify-python "$py_version" || exit $?
     install-prerequisites || exit $?
-    setup-rocm-environment || exit $?
-    build-rocm || exit $?
+    clone-repo "$rocm_repo_url" "$rocm_srcdir" || exit $?
+    configure-env "$rocm_srcdir"
+    if (( $# == 0 )); then
+        build-rocm "$rocm_srcdir" || exit $?
+    else
+        rebuild-rocm "$rocm_srcdir" || exit $?
+    fi
 fi

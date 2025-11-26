@@ -8,12 +8,12 @@ recursively-clone-repo ()
     local srcdir=$2
 
     if test -d "${srcdir}/.git"; then
-        git -C "$srcdir" pull --rebase
-        git -C "$srcdir" submodule update --recursive --remote
+        git -C "$srcdir" pull --rebase || return $?
+        git -C "$srcdir" submodule update --recursive --remote || return $?
     else
-        install -d -m 0755 "${srcdir%/*}"
+        install -d -m 0755 "${srcdir%/*}" || return $?
         git -C "${srcdir%/*}" clone \
-            --recurse-submodules "$repo_url" "${srcdir##*/}"
+            --recurse-submodules "$repo_url" "${srcdir##*/}" || return $?
     fi
 }
 
@@ -26,10 +26,10 @@ build-ompi ()
 
     local builddir=${srcdir}/build
 
-    mkdir "$builddir" || return $?
+    install -d -m 0755 "$builddir" || return $?
 
     pushd "$srcdir" >/dev/null
-    ./autogen.pl
+    ./autogen.pl || return $?
 
     pushd "$builddir" >/dev/null
     popd +1 >/dev/null
@@ -53,8 +53,8 @@ install-ompi ()
 
     sudo make -C "$builddir" install || return $?
     if test ! -f /etc/ld.so.conf.d/ompi.conf; then
-        sudo tee >/dev/null /etc/ld.so.conf.d/ompi.conf <<<'/opt/rocm/lib'
-        sudo ldconfig
+        sudo tee >/dev/null /etc/ld.so.conf.d/ompi.conf <<<'/opt/rocm/lib' || return $?
+        sudo ldconfig || return $?
     fi
 }
 
@@ -73,7 +73,7 @@ if test ."$0" == ."${BASH_SOURCE[0]}"; then
     declare ompi_srcdir=${script_dir}/src/ompi
 
     if ! command -v ucx_info; then
-        ${script_dir}/install-ucx "$rocm_root" "$ucx_root"
+        ${script_dir}/install-ucx "$rocm_root" "$ucx_root" || exit $?
         export PATH=${ucx_root}/bin:${PATH}
     fi
 
