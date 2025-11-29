@@ -8,3 +8,4 @@
 # Local files
 /build
 .tool-versions
+*~
