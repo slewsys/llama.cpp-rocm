@@ -15,8 +15,8 @@ AC_ARG_WITH([opt-path],
     [search optional PATH @{:@default: /opt/local/bin@:}@])],
   [], [with_opt_path=check])
 if test ."$with_opt_path" = .'yes' || test ."$with_opt_path" = .'check'; then
-    if test -d /opt/local/bin; then
-        OPT_PREFIX=/opt/local/sbin${PATH_SEPARATOR}/opt/local/bin
+    if test -d /opt/rocm/bin; then
+        OPT_PREFIX=/opt/rocm/bin
     fi
 elif test ! ."$with_opt_path" = .'no'; then
     if test -d "$with_opt_path"; then
@@ -49,6 +49,7 @@ AC_PATH_PROGS([GREP_CMD],       [ggrep grep],          [], [${OPT_PREFIX}${PATH}
 AC_PATH_PROGS([GZIP_CMD],       [ggzip gzip],          [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([HEAD_CMD],       [ghead head],          [], [${OPT_PREFIX}${PATH}])
 
+AC_PATH_PROG([HIPCONFIG_CMD],   [hipconfig],           [], [${ASDF_PREFIX}${PATH}])
 AC_PATH_PROG([HTMLQ_CMD],       [htmlq],               [], [${ASDF_PREFIX}${PATH}])
 
 AC_PATH_PROGS([INSTALL_CMD],    [ginstall install],    [], [${OPT_PREFIX}${PATH}])

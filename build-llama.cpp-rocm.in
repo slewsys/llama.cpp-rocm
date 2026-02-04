@@ -12,11 +12,13 @@
 # and used to install the latest Python 3.11.x.
 #
 : ${ASDF_CMD="${HOME}/bin/asdf"}
+: ${AWK_CMD:='@AWK_CMD@'}
 : ${CAT_CMD:='@CAT_CMD@'}
 : ${CMAKE_CMD:='@CMAKE_CMD@'}
 : ${ED_CMD:='@ED_CMD@'}
 : ${GIT_CMD:='@GIT_CMD@'}
 : ${GREP_CMD:='@GREP_CMD@'}
+: ${HIPCONFIG_CMD:='@HIPCONFIG_CMD@'}
 : ${MAKE_CMD:='@MAKE_CMD@'}
 : ${NPROC_CMD:='@NPROC_CMD@'}
 : ${PATCH_CMD:='@PATCH_CMD@'}
@@ -26,6 +28,7 @@
 : ${SORT_CMD:='@SORT_CMD@'}
 : ${SUDO_CMD:='@SUDO_CMD@'}
 : ${TEE_CMD:='@TEE_CMD@'}
+: ${UPDATE_ALTERNATIVES_CMD:='@UPDATE_ALTERNATIVES_CMD@'}
 
 : ${INSTALL_PREFIX:='/usr/local'}
 : ${AMDGPU_TARGET:='gfx1151'}
@@ -201,8 +204,8 @@ build-llama.cpp ()
     local builddir=${srcdir}/build
 
     $RM_CMD -rf "$builddir" || return $?
-    HIPCXX="$(hipconfig -l)/clang" \
-          HIP_PATH="$(hipconfig -R)" \
+    HIPCXX="$($HIPCONFIG_CMD -l)/clang" \
+          HIP_PATH="$($HIPCONFIG_CMD -R)" \
           HIP_PLATFORM=amd \
           $CMAKE_CMD \
               -S "$srcdir" \
