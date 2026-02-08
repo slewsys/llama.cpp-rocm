@@ -87,8 +87,8 @@ set-ldconfig ()
 check-ompi-env ()
 {
     local ucx_root=$1
-    local ompi_root=$1
-    local rocm_root=$1
+    local ompi_root=$2
+    local rocm_root=$3
 
     if ! command -v "${ompi_root}/bin/ompi_info" >/dev/null; then
         $SUDO_CMD -i ${script_dir}/install-opmi \

@@ -105,6 +105,10 @@ verify-python ()
 {
     local version=$1
 
+    pushd "${script_dir}" >/dev/null || return $?
+
+    trap 'exit 1' 0 1 2 15 RETURN
+
     if ! command -v "$ASDF_CMD" >/dev/null && test -x "${HOME}/bin/asdf"; then
         export PATH=${PATH}:${HOME}/bin
     fi
@@ -115,7 +119,7 @@ verify-python ()
         fi
 
         python_available=$(
-            $ED_CMD -s <(cd "$script_dir" && $ASDF_CMD list) <<EOF
+            $ED_CMD -s <($ASDF_CMD list) <<EOF
 g/^python/1,.d
 g/^[a-z]/.,\$d
 ,! $GREP_CMD "$version" | $SORT_CMD -V
@@ -139,24 +143,25 @@ EOF
                 ;;
             *)
                 $ASDF_CMD plugin add python || return $?
-                latest=$($ASDF_CMD latest python 3.11)
+                latest=$(eval $ASDF_CMD latest python "$version") || return $?
                 $ASDF_CMD install python "$latest" || return $?
-                (cd "$script_dir" && $ASDF_CMD set python "$latest") || return $?
-                $ASDF_CMD reshim python || return $?
-
-                export PATH=${HOME}/.asdf/shims:${PATH}:${HOME}/bin
+                $ASDF_CMD set python "$latest" || return $?
                 ;;
         esac
     else
         ${script_dir}/install-asdf || return $?
         $ASDF_CMD plugin add python || return $?
-        latest=$($ASDF_CMD latest python 3.11)
+        latest=$(eval $ASDF_CMD latest python "$version") || return $?
         $ASDF_CMD install python "$latest" || return $?
-        (cd "$script_dir" && $ASDF_CMD set python "$latest") || return $?
+        $ASDF_CMD set python "$latest" || return $?
         $ASDF_CMD reshim python || return $?
 
         export PATH=${HOME}/.asdf/shims:${PATH}:${HOME}/bin
     fi
+
+    popd >/dev/null || return $?
+
+    trap - 0 1 2 15 RETURN
 }
 
 clone-repo ()
@@ -189,9 +194,11 @@ patch-repo ()
     fi
 
     local patchfile=''
+    local subdir=''
 
     for patchfile in "${patchdir}/"*.diff; do
-        $PATCH_CMD -d "$srcdir" <"$patchfile" || return $?
+        subdir=$($ED_CMD -e '/^+++ /s;;;' -e 's;/[^/]*$;;p' "$patchfile") || return $?
+        $PATCH_CMD -d "${srcdir}/${subdir}" <"$patchfile" || return $?
     done
 
     $CAT_CMD >&2 <<'EOF'
@@ -233,8 +240,8 @@ build-llama.cpp ()
 #               -DCMAKE_CXX_COMPILER=icpx \
 #               -DGGML_NATIVE=ON \
 
-    $MAKE_CMD -C "$builddir" -j$($NPROC_CMD) |&
-        $TEE_CMD "${builddir}/build.OUT"
+    $MAKE_CMD -C "$builddir" -j$($NPROC_CMD) VERBOSE=1 |&
+        $TEE_CMD "${script_dir}/build.OUT"
 }
 
 if test ."$0" = ."${BASH_SOURCE[0]}"; then
@@ -270,13 +277,13 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     declare llama_patchdir=${abs_srcdir}/patches/llama.cpp
     declare py_version='3\.11'
 
-    echo "Building llama.cpp with ROCm and Intel cuBLAS support" >&2
+    echo "Building llama.cpp with ROCm support" >&2
 
     # check-oneapi-env "$oneapi_root" || exit $?
     check-rocm-env "$amdgpu_target" "$ucx_root" "$ompi_root" "$rocm_root" || exit $?
     verify-python "$py_version" || exit $?
     clone-repo "$llama_repo_url" "$llama_srcdir" || exit $?
-    # patch-repo "$llama_srcdir" "$llama_patchdir" || exit $?
+    patch-repo "$llama_srcdir" "$llama_patchdir" || exit $?
     # set-alternatives gcc /usr/bin/x86_64-linux-gnu-gcc-15 || exit $?
     # set-alternatives g++ /usr/bin/x86_64-linux-gnu-g++-15 || exit $?
     # set-alternatives gfortran /usr/bin/x86_64-linux-gnu-gfortran-15 || exit $?
