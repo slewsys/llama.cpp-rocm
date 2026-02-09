@@ -4,7 +4,7 @@
 #
 BUILD_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
-bin_SCRIPTS = install-llama.cpp-rocm
+bin_SCRIPTS = build-llama.cpp-rocm install-llama.cpp-rocm
 EXTRA_DIST = build-llama.cpp-rocm.in \
 	     install-asdf.in \
 	     build-rocm.in \
@@ -23,9 +23,6 @@ all: llama.cpp-rocm
 
 llama.cpp-rocm: build-llama.cpp-rocm build-rocm install-rocm-binaries
 	$(BUILD_DIR)install-rocm-binaries
-	$(BUILD_DIR)install-ucx
-	$(BUILD_DIR)install-ompi
-	$(BUILD_DIR)build-rocm
 	$(BUILD_DIR)build-llama.cpp-rocm $(abs_srcdir)
 
 install: install-exec-local
