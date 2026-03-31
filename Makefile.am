@@ -21,9 +21,9 @@ AM_DEFAULT_SOURCE_EXT = .in
 
 all: llama.cpp-rocm
 
-llama.cpp-rocm: build-llama.cpp-rocm build-rocm install-rocm-binaries
+llama.cpp-rocm: build-llama.cpp-rocm install-rocm-binaries
 	$(BUILD_DIR)install-rocm-binaries
-	$(BUILD_DIR)build-llama.cpp-rocm $(abs_srcdir)
+	$(BUILD_DIR)build-llama.cpp-rocm "$(abs_srcdir)" "$(prefix)"
 
 install: install-exec-local
 
