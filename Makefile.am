@@ -31,7 +31,7 @@ install-exec-local: install-llama.cpp-rocm
 	$(BUILD_DIR)install-llama.cpp-rocm
 
 clean:
-	rm -rf src
+	sudo rm -rf src
 
 build-llama.cpp-rocm: $(top_srcdir)/build-llama.cpp-rocm.in
 

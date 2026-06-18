@@ -47,7 +47,7 @@ set-alternatives ()
                 $AWK_CMD '{ print $1 }' |
                 $GREP_CMD -q "^${name}\>" &&
                 test -f "$path"; then
-            $SUDO_CMD $UPDATE_ALTERNATIVES_CMD --set "$name" "$path"
+            $SUDO_CMD -i $UPDATE_ALTERNATIVES_CMD --set "$name" "$path"
         fi
     fi
 }

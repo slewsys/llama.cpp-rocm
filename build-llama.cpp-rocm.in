@@ -14,6 +14,7 @@
 : ${ASDF_CMD="${HOME}/bin/asdf"}
 : ${AWK_CMD:='@AWK_CMD@'}
 : ${CAT_CMD:='@CAT_CMD@'}
+: ${CHOWN_CMD:='@CHOWN_CMD@'}
 : ${CMAKE_CMD:='@CMAKE_CMD@'}
 : ${ED_CMD:='@ED_CMD@'}
 : ${GIT_CMD:='@GIT_CMD@'}
@@ -32,7 +33,7 @@
 
 : ${INSTALL_PREFIX:='/usr/local'}
 : ${AMDGPU_TARGET:='gfx1151'}
-: ${ONEAPI_ROOT:='/opt/intel/oneapi'}
+: ${INTEL_ONEAPI_ROOT:='/opt/intel/oneapi'}
 : ${ROCM_ROOT:='/opt/rocm'}
 : ${OMPI_ROOT:='/usr/local'}
 : ${UCX_ROOT:='/usr/local'}
@@ -57,7 +58,7 @@ set-alternatives ()
                 $AWK_CMD '{ print $1 }' |
                 $GREP_CMD -q "^${name}\>" &&
                 test -f "$path"; then
-            $SUDO_CMD $UPDATE_ALTERNATIVES_CMD --set "$name" "$path"
+            $SUDO_CMD -i $UPDATE_ALTERNATIVES_CMD --set "$name" "$path"
         fi
     fi
 }
@@ -66,12 +67,11 @@ check-oneapi-env ()
 {
     local oneapi_root=$1
 
-    if test ! -d "$oneapi_root"; then
-        $SUDO_CMD -i ${script_dir}/install-intel-oneapi-hpc || return $?
-    fi
-
-    if ! command -v icx >/dev/null; then
-        source /opt/intel/oneapi/setvars.sh
+    if test ."$ONEAPI_ROOT" = .''; then
+        if test ! -d "$INTEL_ONEAPI_ROOT"; then
+            $SUDO_CMD -i "${script_dir}/install-intel-oneapi-hpc" || return $?
+        fi
+        source "${INTEL_ONEAPI_ROOT}/setvars.sh"
     fi
 }
 
@@ -170,6 +170,8 @@ clone-repo ()
     local srcdir=$2
 
     if test -d "${srcdir}/.git"; then
+        $SUDO_CMD $CHOWN_CMD -R "${USER}:${USER}" "${srcdir}/build" || return $?
+        $GIT_CMD -C "$srcdir" reset --hard HEAD || return $?
         $GIT_CMD -C "$srcdir" pull --rebase || return $?
     else
         $INSTALL_CMD -d -m 0755 "${srcdir%/*}" || return $?
@@ -202,9 +204,9 @@ patch-repo ()
     done
 
     $CAT_CMD >&2 <<'EOF'
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Enter git credentials for commit: 'Assign golang path.': !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Enter git credentials for commit: 'Update Python scripts.': !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 EOF
     $GIT_CMD -C "$srcdir" commit -a -m 'Update Python scripts.'
 }
@@ -217,23 +219,23 @@ build-llama.cpp ()
     local builddir=${srcdir}/build
 
     $RM_CMD -rf "$builddir" || return $?
-    HIPCXX="$($HIPCONFIG_CMD -l)/clang" \
+    HIPCXX="$($HIPCONFIG_CMD -l)/clang++" \
           HIP_PATH="$($HIPCONFIG_CMD -R)" \
           HIP_PLATFORM=amd \
           $CMAKE_CMD \
               -S "$srcdir" \
               -B "$builddir" \
+              -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
               -DCMAKE_INSTALL_RPATH="${install_prefix}/lib64" \
               -DGGML_HIP=ON \
               -DGGML_HIP_ROCWMMA_FATTN=ON \
-              -DAMDGPU_TARGETS=gfx1151 \
+              -DGPU_TARGETS=gfx1151 \
               -DCMAKE_BUILD_TYPE=Release \
-              -DLLAMA_CURL=ON \
         || return $?
 
 # OneAPI CMake options
-#               -DCMAKE_INSTALL_RPATH="${install_prefix}/lib64;${ONEAPI_ROOT}/compiler/latest/lib;${ONEAPI_ROOT}/mkl/latest/lib" \
+#               -DCMAKE_INSTALL_RPATH="${install_prefix}/lib64;${INTEL_ONEAPI_ROOT}/compiler/latest/lib;${INTEL_ONEAPI_ROOT}/mkl/latest/lib" \
 #               -DGGML_BLAS=ON \
 #               -DGGML_BLAS_VENDOR=Intel10_64lp \
 #               -DCMAKE_C_COMPILER=icx \
@@ -270,7 +272,7 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     declare rocm_root=${4:-"$ROCM_ROOT"}
     declare ompi_root=${5:-"$OMPI_ROOT"}
     declare ucx_root=${6:-"$UCX_ROOT"}
-    declare oneapi_root=${7:-"$ONEAPI_ROOT"}
+    declare oneapi_root=${7:-"$INTEL_ONEAPI_ROOT"}
 
     declare llama_repo_url='https://github.com/ggml-org/llama.cpp.git'
     declare llama_srcdir=${script_dir}/src/llama.cpp
