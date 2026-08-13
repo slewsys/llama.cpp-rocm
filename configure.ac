@@ -55,6 +55,8 @@ AC_PATH_PROG([HTMLQ_CMD],       [htmlq],               [], [${ASDF_PREFIX}${PATH
 
 AC_PATH_PROGS([INSTALL_CMD],    [ginstall install],    [], [${OPT_PREFIX}${PATH}])
 
+AC_PATH_PROG([LDCONFIG_CMD],    [ldconfig],            [], [${PATH}])
+
 AC_PATH_PROGS([LN_CMD],         [gln ln],              [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([MAKE_CMD],       [gmake make],          [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([MKDIR_CMD],      [gmkdir mkdir],        [], [${OPT_PREFIX}${PATH}])

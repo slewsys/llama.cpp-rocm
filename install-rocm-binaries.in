@@ -6,13 +6,17 @@
 # builds.
 #
 : ${CURL_CMD:='@CURL_CMD@'}
+: ${GREP_CMD:='@GREP_CMD@'}
 : ${GZIP_CMD:='@GZIP_CMD@'}
 : ${INSTALL_CMD:='@INSTALL_CMD@'}
 : ${JQ_CMD:='@JQ_CMD@'}
+: ${LDCONFIG_CMD:='@LDCONFIG_CMD@'}
+: ${READLINK_CMD:='@READLINK_CMD@'}
 : ${RM_CMD:='@RM_CMD@'}
 : ${SED_CMD:='@SED_CMD@'}
 : ${SUDO_CMD:='@SUDO_CMD@'}
 : ${TAR_CMD:='@TAR_CMD@'}
+: ${TEE_CMD:='@TEE_CMD@'}
 : ${TOUCH_CMD:='@TOUCH_CMD@'}
 
 : ${AMDGPU_TARGET:='gfx1151'}
@@ -30,6 +34,18 @@ get-latest-build ()
                  -e 's^^{ "files": ^' \
                  -e 's^];^] }^' |
         $JQ_CMD -r '[.files[] | select(.name | contains("'$target'"))] | . | max_by(.mtime) | .name'
+}
+
+get-latest-builds ()
+{
+    local target=linux-${1}
+    local index_url=https://therock-nightly-tarball.s3.amazonaws.com/index.html
+
+    $CURL_CMD -sSL --no-buffer "$index_url" |
+        $SED_CMD -e '/const files = /!d' \
+                 -e 's^^{ "files": ^' \
+                 -e 's^];^] }^' |
+        $JQ_CMD -r '[.files[] | select(.name | contains("'$target'"))]'
 }
 
 is-installed ()
@@ -115,7 +131,7 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     declare script_name=''
     declare script_dir=''
 
-    script=$(readlink -e "$0")
+    script=$($READLINK_CMD -e "$0")
     script_name=${script##*/}
     script_dir=${script%/*}
 
@@ -127,7 +143,11 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     declare rocm_nightly_url='https://therock-nightly-tarball.s3.amazonaws.com'
     declare latest_build=''
 
-    if ! latest_build=$(get-latest-build "$amdgpu_target" "$rocm_nightly_url"); then
+    if [[ ."$amdgpu_target" =~ \..*tar\.gz ]]; then
+        latest_build=$amdgpu_target
+    fi
+    if test -z "$latest_build" \
+            && ! latest_build=$(get-latest-build "$amdgpu_target" "$rocm_nightly_url"); then
         echo "${script_name}: ${amdgpu_target}: Not found" >&2
         exit 1
     elif is-installed "$rocm_root" "$latest_build"; then

@@ -21,8 +21,7 @@ AM_DEFAULT_SOURCE_EXT = .in
 
 all: llama.cpp-rocm
 
-llama.cpp-rocm: build-llama.cpp-rocm install-rocm-binaries
-	$(BUILD_DIR)install-rocm-binaries
+llama.cpp-rocm: build-llama.cpp-rocm
 	$(BUILD_DIR)build-llama.cpp-rocm "$(abs_srcdir)" "$(prefix)"
 
 install: install-exec-local
@@ -42,3 +41,8 @@ install-llama.cpp-rocm: $(top_srcdir)/install-llama.cpp-rocm.in
 install-intel-oneapi-hpc: $(top_srcdir)/install-intel-oneapi-hpc.in
 
 install-rocm-binaries: $(top_srcdir)/install-rocm-binaries.in
+	$(BUILD_DIR)install-rocm-binaries $${AMDGPU_TARGET}
+
+get-latest-builds: $(top_srcdir)/install-rocm-binaries.in
+	source $(BUILD_DIR)install-rocm-binaries; \
+	get-latest-builds $${AMDGPU_TARGET}

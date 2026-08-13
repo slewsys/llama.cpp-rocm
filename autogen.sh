@@ -121,7 +121,7 @@ $script_name:
      run:
 
              \$ \$top_srcdir/configure
-             \$ make
+             \$ make [AMDGPU_TARGET=gfx1151|therock-dist-linux-gfx1151-7.14.0a20260611.tar.gz]
              \$ make install
 
 ------------------------------------------------------------------------
