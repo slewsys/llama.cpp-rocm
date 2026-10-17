@@ -22,6 +22,7 @@
 : ${RM_CMD:='@RM_CMD@'}
 : ${SORT_CMD:='@SORT_CMD@'}
 : ${SUDO_CMD:='@SUDO_CMD@'}
+: ${TAR_CMD:='@TAR_CMD@'}
 : ${UPDATE_ALTERNATIVES_CMD:='@UPDATE_ALTERNATIVES_CMD@'}
 
 : ${INSTALL_PREFIX:='/usr/local'}
@@ -137,14 +138,29 @@ install-llama.cpp ()
     local builddir=${srcdir}/build
 
     if test ! -d "$builddir"; then
-        echo "${script_name}: ${builddir}: No such directory. Please build first." >&2
+        echo "${script_name}: ${builddir}: No such file or directory." >&2
+        echo "${script_name}: Please build llama.cpp first." >&2
         return 1
     fi
 
-    $SUDO_CMD $MAKE_CMD -C "$builddir" install || return $?
+    $SUDO_CMD -i $MAKE_CMD -C "$builddir" install || return $?
+}
 
-    # gguf.py support for MXFP4 not yet released.
-    $PIP_CMD install "${srcdir}/gguf-py" || return $?
+install-scripts ()
+{
+    local srcdir=$1
+    local install_prefix=$2
+
+    local py_site_packages_dir=''
+
+    # Assert: Python is local to user's home directory.
+    py_site_packages_dir=$($PYTHON_CMD -c 'import site; print(site.getsitepackages()[0])') || return $?
+
+    $TAR_CMD -C "${srcdir}" -cf - conversion |
+        $TAR_CMD -C "$py_site_packages_dir" -xf - || return $?
+    (cd "${srcdir}/gguf-py" && $PIP_CMD install --force-reinstall .) || return $?
+    $SUDO_CMD $INSTALL_CMD -d -m 0755 "${install_prefix}/bin" || return $?
+    $SUDO_CMD $INSTALL_CMD -m 0755 "${srcdir}/convert_hf_to_gguf.py" "${install_prefix}/bin" || return $?
 }
 
 if test ."$0" = ."${BASH_SOURCE[0]}"; then
@@ -168,9 +184,10 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
               ) || true
 
     declare abs_srcdir=${1:-"$top_srcdir"}
+    declare install_prefix=${2:-"$INSTALL_PREFIX"}
 
     declare llama_srcdir=${script_dir}/src/llama.cpp
-    declare py_version='3\.11'
+    declare py_version='3\.14'
 
     echo "Installing llama.cpp with ROCm and Intel cuBLAS support" >&2
 
@@ -181,4 +198,5 @@ if test ."$0" = ."${BASH_SOURCE[0]}"; then
     # set-alternatives g++ /usr/bin/x86_64-linux-gnu-g++-15 || exit $?
     # set-alternatives gfortran /usr/bin/x86_64-linux-gnu-gfortran-15 || exit $?
     install-llama.cpp "$llama_srcdir" || exit $?
+    install-scripts "$llama_srcdir" "$install_prefix" || exit $?
 fi

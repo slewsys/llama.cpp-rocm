@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([zfs-rpms], [1.0.0], [])
+AC_INIT([llama.cpp-rocm], [1.1.0], [])
 AM_INIT_AUTOMAKE([foreign])
 
 HOME_PREFIX=${HOME}/bin${PATH_SEPARATOR}
@@ -44,6 +44,7 @@ AC_PATH_PROG([CURL_CMD],        [curl],                [], [${OPT_PREFIX}${PATH}
 AC_PATH_PROGS([DNF_CMD],        [dnf5 dnf])
 
 AC_PATH_PROG([ED_CMD],          [ed],                  [], [${LOCAL_PREFIX}${PATH}])
+AC_PATH_PROG([FIND_CMD],        [find],                [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([GIT_CMD],         [git],                 [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROGS([GREP_CMD],       [ggrep grep],          [], [${OPT_PREFIX}${PATH}])
@@ -65,12 +66,14 @@ AC_PATH_PROG([NPROC_CMD],       [nproc],               [], [${OPT_PREFIX}${PATH}
 AC_PATH_PROG([JQ_CMD],          [jq],                  [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([PATCH_CMD],       [patch],               [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROG([PIP_CMD],         [pip],                 [], [${ASDF_PREFIX}${PATH}])
+AC_PATH_PROG([PYTHON_CMD],      [python],              [], [${ASDF_PREFIX}${PATH}])
 
 AC_PATH_PROGS([READLINK_CMD],   [greadlink readlink],  [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([RM_CMD],         [grm rm],              [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROG([RPM_CMD],         [rpm],                 [], [${OPT_PREFIX}${PATH}])
 
+AC_PATH_PROGS([SED_CMD],        [gsed sed],            [], [${OPT_PREFIX}${PATH}])
 AC_PATH_PROGS([SORT_CMD],       [gsort sort],          [], [${OPT_PREFIX}${PATH}])
 
 AC_PATH_PROG([SUDO_CMD],        [sudo],                [], [${OPT_PREFIX}${PATH}])
